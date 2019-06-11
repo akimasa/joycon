@@ -53,18 +53,14 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case downButtons>>22&1 == 1: // L
 		jc.scroll = true
 	case downButtons>>23&1 == 1: // ZL
-		jc.SendRumble(rumbleData...)
 		robotgo.MouseClick("left")
 	case downButtons>>16&1 == 1: // Down
-		jc.SendRumble(rumbleData...)
 		robotgo.KeyTap("down")
 	case downButtons>>17&1 == 1: // Up
-		jc.SendRumble(rumbleData...)
 		robotgo.KeyTap("up")
 	case downButtons>>18&1 == 1: // Right
 		robotgo.KeyTap("right")
 	case downButtons>>19&1 == 1: // Left
-		jc.SendRumble(rumbleData...)
 		robotgo.KeyTap("left")
 	case downButtons>>20&1 == 1: // SR
 		// robotgo.KeyTap("f4", "ctrl")
