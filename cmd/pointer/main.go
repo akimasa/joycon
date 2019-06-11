@@ -70,7 +70,7 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case downButtons>>8&1 == 1: // -
 		robotgo.KeyTap("escape")
 	case downButtons>>11&1 == 1: // LStick Push
-		robotgo.MouseClick("right")
+		robotgo.MouseClick("center")
 	case downButtons>>13&1 == 1: // Capture
 	}
 	switch {
