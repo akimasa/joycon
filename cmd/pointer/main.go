@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"os"
 	"os/signal"
 
@@ -15,12 +16,12 @@ var (
 	oldBattery int
 	rumbleData = []joycon.RumbleSet{
 		{
-			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0},   // HiCoil
-			{HiFreq: 16, HiAmp: 80, LoFreq: 16, LoAmp: 80}, // LoCoil
+			{HiFreq: 16, HiAmp: 80, LoFreq: 16, LoAmp: 80}, // Left
+			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0},   // Right
 		},
 		{
-			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // HiCoil
-			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // LoCoil
+			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // Left
+			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // Right
 		},
 	}
 )
@@ -49,74 +50,58 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case downButtons == 0:
 	default:
 		log.Printf("down: %06X", downButtons)
-	case downButtons>>6&1 == 1: // R
-		jc.stop = true
-	case downButtons>>7&1 == 1: // ZR
+	case downButtons>>22&1 == 1: // L
 		jc.scroll = true
-	case downButtons>>0&1 == 1: // Y
+	case downButtons>>23&1 == 1: // ZL
 		jc.SendRumble(rumbleData...)
 		robotgo.MouseClick("left")
-	case downButtons>>1&1 == 1: // X
+	case downButtons>>16&1 == 1: // Down
 		jc.SendRumble(rumbleData...)
-		robotgo.MouseClick("center")
-	case downButtons>>3&1 == 1: // A
+		robotgo.KeyTap("down")
+	case downButtons>>17&1 == 1: // Up
 		jc.SendRumble(rumbleData...)
-		robotgo.MouseClick("right")
-	case downButtons>>2&1 == 1: // B
-		robotgo.KeyTap("space")
-	case downButtons>>4&1 == 1: // SR
-		robotgo.Scroll(0, -2)
-	case downButtons>>5&1 == 1: // SL
-		robotgo.Scroll(0, +2)
-	case downButtons>>9&1 == 1: // +
+		robotgo.KeyTap("up")
+	case downButtons>>18&1 == 1: // Right
+		robotgo.KeyTap("right")
+	case downButtons>>19&1 == 1: // Left
+		jc.SendRumble(rumbleData...)
+		robotgo.KeyTap("left")
+	case downButtons>>20&1 == 1: // SR
+		// robotgo.KeyTap("f4", "ctrl")
+		robotgo.MouseToggle("down", "right")
+	case downButtons>>21&1 == 1: // SL
+		robotgo.KeyTap("f4", "alt")
+	case downButtons>>8&1 == 1: // -
 		robotgo.KeyTap("escape")
-	case downButtons>>10&1 == 1: // RStick Push
-	case downButtons>>12&1 == 1: // Home
+	case downButtons>>11&1 == 1: // LStick Push
+		robotgo.MouseClick("right")
+	case downButtons>>13&1 == 1: // Capture
 	}
 	switch {
 	case upButtons == 0:
 	default:
 		log.Printf("up  : %06X", upButtons)
-	case upButtons>>6&1 == 1: // R
-		jc.stop = false
-	case upButtons>>7&1 == 1: // ZR
+	case upButtons>>22&1 == 1: // L
 		jc.scroll = false
+	case upButtons>>7&1 == 1: // ZL
+	case upButtons>>20&1 == 1: // SR
+		robotgo.MouseToggle("up", "right")
 	case upButtons>>0&1 == 1: // Y
 	case upButtons>>1&1 == 1: // X
 	case upButtons>>2&1 == 1: // B
 	case upButtons>>3&1 == 1: // A
-	case upButtons>>4&1 == 1: // SR
-	case upButtons>>5&1 == 1: // SL
+	case downButtons>>5&1 == 1: // SL
 	case upButtons>>9&1 == 1: // +
 	case upButtons>>10&1 == 1: // RStick Push
 	case upButtons>>12&1 == 1: // Home
 	}
 	if jc.scroll {
-		jc.scrollPos += s.RightAdj.Y * s.RightAdj.Y * s.RightAdj.Y
-		d := -int(jc.scrollPos)
-		jc.scrollPos += float32(d)
-		robotgo.Scroll(0, d)
+		robotgo.Scroll(0, int(s.LeftAdj.Y*3))
 	} else {
-		switch {
-		case s.RightAdj.X > 0.5 && oldStick.X < 0.5:
-			robotgo.KeyTap("right")
-		case s.RightAdj.X < 0.5 && oldStick.X > 0.5:
-		}
-		switch {
-		case s.RightAdj.X < -0.5 && oldStick.X > -0.5:
-			robotgo.KeyTap("left")
-		case s.RightAdj.X > -0.5 && oldStick.X < -0.5:
-		}
-		switch {
-		case s.RightAdj.Y > 0.5 && oldStick.Y < 0.5:
-			robotgo.KeyTap("up")
-		case s.RightAdj.Y < 0.5 && oldStick.Y > 0.5:
-		}
-		switch {
-		case s.RightAdj.Y < -0.5 && oldStick.Y > -0.5:
-			robotgo.KeyTap("down")
-		case s.RightAdj.Y > -0.5 && oldStick.Y < -0.5:
-		}
+		x, y := robotgo.GetMousePos()
+		x += int(s.LeftAdj.X * s.LeftAdj.X * (s.LeftAdj.X / float32(math.Abs(float64(s.LeftAdj.X)))) * 80)
+		y -= int(s.LeftAdj.Y * s.LeftAdj.Y * (s.LeftAdj.Y / float32(math.Abs(float64(s.LeftAdj.Y)))) * 80)
+		robotgo.MoveMouse(x, y)
 	}
 }
 
@@ -157,7 +142,7 @@ func (jc *Joycon) sensorHandle(s joycon.Sensor) {
 
 func main() {
 	log.SetFlags(log.Lmicroseconds)
-	devices, err := joycon.Search(joycon.JoyConR)
+	devices, err := joycon.Search(joycon.JoyConL)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -180,7 +165,7 @@ func main() {
 				return
 			}
 			jc.stateHandle(s)
-			jc.apply()
+			// jc.apply()
 		case s, ok := <-jc.Sensor():
 			if !ok {
 				return
