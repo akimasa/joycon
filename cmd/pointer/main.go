@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/akimasa/joycon"
 	"github.com/go-vgo/robotgo"
-	"github.com/nobonobo/joycon"
 )
 
 var (

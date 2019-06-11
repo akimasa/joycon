@@ -24,16 +24,16 @@ var (
 			{0x01, 0x03}, // Connect3
 		*/
 		{0x30, 0x01}, // Set PlayerLED
-		{0x40, 0x01}, // Enable 6axis Sensor
-		{0x48, 0x01}, // Enable Vibration
+		// {0x40, 0x01}, // Enable 6axis Sensor
+		// {0x48, 0x01}, // Enable Vibration
 		{0x03, 0x30}, // Set Standard full mode. Pushes current state @60Hz
 	}
 	disconnectSeq = [][]byte{
-		{0x30, 0x00}, // Clear PlayerLED
+		{0x30, 0x0f}, // Clear PlayerLED
 		{0x40, 0x00}, // Disable 6axis Sensor
 		{0x48, 0x00}, // Disable Vibration
 		{0x03, 0x3f}, // Set Normal HID Mode
-		//{0x06, 0x00}, // HCI Disconnect
+		{0x06, 0x00}, // HCI Disconnect
 	}
 )
 
