@@ -174,8 +174,6 @@ func getInt16(b []byte) int16 {
 
 // UnmarshalBinary ...
 func (ci *GyroCalibInfo) UnmarshalBinary(b []byte) error {
-
-	fmt.Println(getInt16(b[0:]))
 	ci.Center.X = float32(getInt16(b[0:]))
 	ci.Center.Y = float32(getInt16(b[2:]))
 	ci.Center.Z = float32(getInt16(b[4:]))

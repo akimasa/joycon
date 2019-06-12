@@ -555,9 +555,13 @@ func (jc *Joycon) calibrationGyro(s Vec3) Vec3 {
 	var res Vec3
 	coeffX := float32(936.0 / float32(jc.gyrocalib.Coeff.X-jc.gyrocalib.Center.X))
 	res.X = (s.X - float32(jc.gyrocalib.Center.X)) * coeffX
+
 	coeffY := float32(936.0 / float32(jc.gyrocalib.Coeff.Y-jc.gyrocalib.Center.Y))
 	res.Y = (s.Y - float32(jc.gyrocalib.Center.Y)) * coeffY
+
 	coeffZ := float32(936.0 / float32(jc.gyrocalib.Coeff.Z-jc.gyrocalib.Center.Z))
 	res.Z = (s.Z - float32(jc.gyrocalib.Center.Z)) * coeffZ
+
+	fmt.Println(res, s)
 	return res
 }
