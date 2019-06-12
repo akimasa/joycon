@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"os"
@@ -9,6 +10,8 @@ import (
 	"github.com/akimasa/joycon"
 	"github.com/go-vgo/robotgo"
 )
+
+const GyroDeadZone = 1.5
 
 var (
 	oldButtons uint32
@@ -126,19 +129,45 @@ func (jc *Joycon) apply() {
 }
 
 func (jc *Joycon) sensorHandle(s joycon.Sensor) {
+
 	if jc.IsLeft() || jc.IsProCon() {
-		jc.dx -= s.Gyro.Z
-		jc.dy += s.Gyro.Y
+		if math.Abs(float64(s.Gyro.Z)) > GyroDeadZone {
+			if s.Gyro.Z < 0 {
+				jc.dx -= s.Gyro.Z + GyroDeadZone
+			} else {
+				jc.dx -= s.Gyro.Z - GyroDeadZone
+			}
+		}
+		if math.Abs(float64(s.Gyro.Y)) > GyroDeadZone {
+			if s.Gyro.Y < 0 {
+				jc.dy += s.Gyro.Y + GyroDeadZone
+			} else {
+				jc.dy += s.Gyro.Y - GyroDeadZone
+			}
+		}
 	}
 	if jc.IsRight() {
-		jc.dx += s.Gyro.Z
-		jc.dy -= s.Gyro.Y
+		if math.Abs(float64(s.Gyro.Z)) > GyroDeadZone {
+			if s.Gyro.Z < 0 {
+				jc.dx += s.Gyro.Z + GyroDeadZone
+			} else {
+				jc.dx += s.Gyro.Z - GyroDeadZone
+			}
+		}
+		if math.Abs(float64(s.Gyro.Y)) > GyroDeadZone {
+			if s.Gyro.Y < 0 {
+				jc.dy -= s.Gyro.Y + GyroDeadZone
+			} else {
+				jc.dy -= s.Gyro.Y - GyroDeadZone
+			}
+		}
 	}
+	fmt.Println(s.Gyro)
 }
 
 func main() {
 	log.SetFlags(log.Lmicroseconds)
-	devices, err := joycon.Search(joycon.JoyConL)
+	devices, err := joycon.Search(joycon.JoyConR)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -161,7 +190,7 @@ func main() {
 				return
 			}
 			jc.stateHandle(s)
-			// jc.apply()
+			jc.apply()
 		case s, ok := <-jc.Sensor():
 			if !ok {
 				return
