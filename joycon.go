@@ -24,7 +24,7 @@ var (
 			{0x01, 0x03}, // Connect3
 		*/
 		{0x30, 0x01}, // Set PlayerLED
-		// {0x40, 0x01}, // Enable 6axis Sensor
+		{0x40, 0x01}, // Enable 6axis Sensor
 		// {0x48, 0x01}, // Enable Vibration
 		{0x03, 0x30}, // Set Standard full mode. Pushes current state @60Hz
 	}
@@ -67,6 +67,7 @@ type Joycon struct {
 	sendRumble   chan<- []byte
 	muSendRumble sync.RWMutex
 	interval     *time.Ticker
+	gyrocalib    GyroCalibInfo
 }
 
 // NewJoycon ...
@@ -280,6 +281,7 @@ func (jc *Joycon) receive() {
 				}
 				atomic.AddUint64(&jc.stats.SensorCount, 1)
 				for n := 0; n < 3; n++ {
+					s[n].Gyro = jc.calibrationGyro(s[n].Gyro)
 					select {
 					case jc.sensor <- s[n]:
 					default:
@@ -401,11 +403,12 @@ func (jc *Joycon) run() {
 		return
 	}
 	// Gyro Parameters (sys)
-	_, err = jc.ReadSPI(0x6029, 10)
+	data, err = jc.ReadSPI(0x602c, 12)
 	if err != nil {
 		jc.state <- State{Err: err}
 		return
 	}
+	jc.gyrocalib.UnmarshalBinary(data)
 	for _, seq := range connectSeq {
 		if err := jc.subcommand(nil, seq); err != nil {
 			jc.state <- State{Err: err}
@@ -545,5 +548,16 @@ func (jc *Joycon) calibration(c CalibInfo, s Stick) Vec2 {
 	} else {
 		res.Y = diff / float32(c.Min.Y)
 	}
+	return res
+}
+
+func (jc *Joycon) calibrationGyro(s Vec3) Vec3 {
+	var res Vec3
+	coeffX := float32(936.0 / float32(jc.gyrocalib.Coeff.X-jc.gyrocalib.Center.X))
+	res.X = (s.X - float32(jc.gyrocalib.Center.X)) * coeffX
+	coeffY := float32(936.0 / float32(jc.gyrocalib.Coeff.Y-jc.gyrocalib.Center.Y))
+	res.Y = (s.Y - float32(jc.gyrocalib.Center.Y)) * coeffY
+	coeffZ := float32(936.0 / float32(jc.gyrocalib.Coeff.Z-jc.gyrocalib.Center.Z))
+	res.Z = (s.Z - float32(jc.gyrocalib.Center.Z)) * coeffZ
 	return res
 }

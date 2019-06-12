@@ -112,14 +112,14 @@ func (s *Sensors) UnmarshalBinary(b []byte) error {
 		s[n].Accel.Z = AccelK * float32(int16(
 			binary.LittleEndian.Uint16(b[17+n*12:19+n*12]),
 		))
-		s[n].Gyro.X = GyroK * float32(int16(
-			binary.LittleEndian.Uint16(b[19+n*12:21+n*12]),
+		s[n].Gyro.X = float32(int16(
+			binary.LittleEndian.Uint16(b[19+n*12 : 21+n*12]),
 		))
-		s[n].Gyro.Y = GyroK * float32(int16(
-			binary.LittleEndian.Uint16(b[21+n*12:23+n*12]),
+		s[n].Gyro.Y = float32(int16(
+			binary.LittleEndian.Uint16(b[21+n*12 : 23+n*12]),
 		))
-		s[n].Gyro.Z = GyroK * float32(int16(
-			binary.LittleEndian.Uint16(b[23+n*12:25+n*12]),
+		s[n].Gyro.Z = float32(int16(
+			binary.LittleEndian.Uint16(b[23+n*12 : 25+n*12]),
 		))
 	}
 	return nil
@@ -150,6 +150,40 @@ func (ci *CalibInfo) String() string {
 	return fmt.Sprintf("{%v %v %v}", ci.Center, max, min)
 }
 */
+type GyroCalib struct {
+	X float32
+	Y float32
+	Z float32
+}
+
+// GyroCalibInfo ...
+type GyroCalibInfo struct {
+	Center GyroCalib
+	Coeff  GyroCalib
+}
+
+func getInt16(b []byte) int16 {
+	var i int16
+	buf := bytes.NewReader(b)
+	err := binary.Read(buf, binary.LittleEndian, &i)
+	if err != nil {
+		fmt.Println("binary.Read failded:", err)
+	}
+	return i
+}
+
+// UnmarshalBinary ...
+func (ci *GyroCalibInfo) UnmarshalBinary(b []byte) error {
+
+	fmt.Println(getInt16(b[0:]))
+	ci.Center.X = float32(getInt16(b[0:]))
+	ci.Center.Y = float32(getInt16(b[2:]))
+	ci.Center.Z = float32(getInt16(b[4:]))
+	ci.Coeff.X = float32(getInt16(b[6:]))
+	ci.Coeff.Y = float32(getInt16(b[8:]))
+	ci.Coeff.Z = float32(getInt16(b[10:]))
+	return nil
+}
 
 // Rumble ...
 type Rumble struct {
