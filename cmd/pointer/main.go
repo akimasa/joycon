@@ -24,6 +24,7 @@ var (
 			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // Right
 		},
 	}
+	mode = true
 )
 
 // Joycon ...
@@ -55,11 +56,19 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case downButtons>>23&1 == 1: // ZL
 		robotgo.MouseClick("left")
 	case downButtons>>16&1 == 1: // Down
-		robotgo.KeyTap("down")
+		if mode {
+			robotgo.KeyTap("down")
+		} else {
+			robotgo.KeyTap("space")
+		}
 	case downButtons>>17&1 == 1: // Up
 		robotgo.KeyTap("up")
 	case downButtons>>18&1 == 1: // Right
-		robotgo.KeyTap("right")
+		if mode {
+			robotgo.KeyTap("right")
+		} else {
+			robotgo.KeyTap("enter")
+		}
 	case downButtons>>19&1 == 1: // Left
 		robotgo.KeyTap("left")
 	case downButtons>>20&1 == 1: // SR
@@ -72,6 +81,12 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case downButtons>>11&1 == 1: // LStick Push
 		robotgo.MouseClick("center")
 	case downButtons>>13&1 == 1: // Capture
+		mode = !mode
+		if mode {
+			jc.Subcommand([]byte{0x30, 0x01})
+		} else {
+			jc.Subcommand([]byte{0x30, 0x18})
+		}
 	}
 	switch {
 	case upButtons == 0:
