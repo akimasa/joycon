@@ -24,7 +24,8 @@ var (
 			{HiFreq: 64, HiAmp: 0, LoFreq: 64, LoAmp: 0}, // Right
 		},
 	}
-	mode = true
+	mode       = true
+	rightclick = false
 )
 
 // Joycon ...
@@ -52,9 +53,20 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	default:
 		log.Printf("down: %06X", downButtons)
 	case downButtons>>22&1 == 1: // L
-		jc.scroll = true
+		if mode {
+			jc.scroll = true
+			rightclick = false
+		} else {
+			robotgo.MouseToggle("down", "left")
+		}
 	case downButtons>>23&1 == 1: // ZL
-		robotgo.MouseClick("left")
+		if jc.scroll {
+			rightclick = true
+			robotgo.MouseToggle("down", "right")
+		} else {
+			robotgo.MouseToggle("down", "left")
+		}
+
 	case downButtons>>16&1 == 1: // Down
 		if mode {
 			robotgo.KeyTap("down")
@@ -93,8 +105,22 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	default:
 		log.Printf("up  : %06X", upButtons)
 	case upButtons>>22&1 == 1: // L
-		jc.scroll = false
-	case upButtons>>7&1 == 1: // ZL
+		if mode {
+			jc.scroll = false
+			if rightclick {
+				robotgo.MouseToggle("up", "right")
+			}
+		} else {
+			robotgo.MouseToggle("up", "left")
+		}
+	case upButtons>>23&1 == 1: // ZL
+		if jc.scroll {
+			rightclick = false
+			robotgo.MouseToggle("up", "right")
+		} else {
+			robotgo.MouseToggle("up", "left")
+		}
+
 	case upButtons>>20&1 == 1: // SR
 		robotgo.MouseToggle("up", "right")
 	case upButtons>>0&1 == 1: // Y
@@ -106,7 +132,7 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 	case upButtons>>10&1 == 1: // RStick Push
 	case upButtons>>12&1 == 1: // Home
 	}
-	if jc.scroll {
+	if jc.scroll && !rightclick {
 		robotgo.Scroll(0, int(s.LeftAdj.Y*3))
 	} else {
 		x, y := robotgo.GetMousePos()
