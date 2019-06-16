@@ -88,9 +88,10 @@ func (s *State) UnmarshalBinary(b []byte) error {
 
 // Sensor ...
 type Sensor struct {
-	Tick  byte
-	Gyro  Vec3
-	Accel Vec3
+	Tick    byte
+	Gyro    Vec3
+	GyroAdj Vec3
+	Accel   Vec3
 }
 
 // Sensors ...

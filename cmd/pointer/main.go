@@ -11,12 +11,15 @@ import (
 	"github.com/go-vgo/robotgo"
 )
 
-const GyroDeadZone = 1.5
+const GyroDeadZone = 0.3
 
 var (
-	oldButtons uint32
-	oldStick   joycon.Vec2
-	oldBattery int
+	oldButtons        uint32
+	oldStick          joycon.Vec2
+	oldBattery        int
+	oldGyro           joycon.Vec3
+	invokecalibration = 1
+
 	rumbleData = []joycon.RumbleSet{
 		{
 			{HiFreq: 16, HiAmp: 80, LoFreq: 16, LoAmp: 80}, // Left
@@ -72,6 +75,8 @@ func (jc *Joycon) stateHandle(s joycon.State) {
 		robotgo.KeyTap("f4", "alt")
 	case downButtons>>8&1 == 1: // -
 		robotgo.KeyTap("escape")
+	case downButtons>>9&1 == 1: // +
+		invokecalibration = 1
 	case downButtons>>11&1 == 1: // LStick Push
 		robotgo.MouseClick("center")
 	case downButtons>>13&1 == 1: // Capture
@@ -131,34 +136,34 @@ func (jc *Joycon) apply() {
 func (jc *Joycon) sensorHandle(s joycon.Sensor) {
 
 	if jc.IsLeft() || jc.IsProCon() {
-		if math.Abs(float64(s.Gyro.Z)) > GyroDeadZone {
-			if s.Gyro.Z < 0 {
-				jc.dx -= s.Gyro.Z + GyroDeadZone
+		if math.Abs(float64(s.GyroAdj.Z)) > GyroDeadZone {
+			if s.GyroAdj.Z < 0 {
+				jc.dx -= s.GyroAdj.Z + GyroDeadZone
 			} else {
-				jc.dx -= s.Gyro.Z - GyroDeadZone
+				jc.dx -= s.GyroAdj.Z - GyroDeadZone
 			}
 		}
-		if math.Abs(float64(s.Gyro.Y)) > GyroDeadZone {
-			if s.Gyro.Y < 0 {
-				jc.dy += s.Gyro.Y + GyroDeadZone
+		if math.Abs(float64(s.GyroAdj.Y)) > GyroDeadZone {
+			if s.GyroAdj.Y < 0 {
+				jc.dy += s.GyroAdj.Y + GyroDeadZone
 			} else {
-				jc.dy += s.Gyro.Y - GyroDeadZone
+				jc.dy += s.GyroAdj.Y - GyroDeadZone
 			}
 		}
 	}
 	if jc.IsRight() {
-		if math.Abs(float64(s.Gyro.Z)) > GyroDeadZone {
-			if s.Gyro.Z < 0 {
-				jc.dx += s.Gyro.Z + GyroDeadZone
+		if math.Abs(float64(s.GyroAdj.Z)) > GyroDeadZone {
+			if s.GyroAdj.Z < 0 {
+				jc.dx += s.GyroAdj.Z + GyroDeadZone
 			} else {
-				jc.dx += s.Gyro.Z - GyroDeadZone
+				jc.dx += s.GyroAdj.Z - GyroDeadZone
 			}
 		}
-		if math.Abs(float64(s.Gyro.Y)) > GyroDeadZone {
-			if s.Gyro.Y < 0 {
-				jc.dy -= s.Gyro.Y + GyroDeadZone
+		if math.Abs(float64(s.GyroAdj.Y)) > GyroDeadZone {
+			if s.GyroAdj.Y < 0 {
+				jc.dy -= s.GyroAdj.Y + GyroDeadZone
 			} else {
-				jc.dy -= s.Gyro.Y - GyroDeadZone
+				jc.dy -= s.GyroAdj.Y - GyroDeadZone
 			}
 		}
 	}
@@ -195,7 +200,11 @@ func main() {
 			if !ok {
 				return
 			}
+			if invokecalibration > 0 && math.Abs(float64(oldGyro.X-s.Gyro.X)) < 2.0 && math.Abs(float64(oldGyro.Y-s.Gyro.Y)) < 2.0 && math.Abs(float64(oldGyro.Z-s.Gyro.Z)) < 2.0 && jc.CalibrateGyro(s.Gyro) {
+				invokecalibration = -1
+			}
 			jc.sensorHandle(s)
+			oldGyro = s.Gyro
 		}
 	}
 }

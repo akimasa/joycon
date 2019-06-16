@@ -44,30 +44,31 @@ type sub struct {
 
 // Joycon ...
 type Joycon struct {
-	info         *hid.DeviceInfo
-	closeOnce    sync.Once
-	device       hid.Device
-	rumble       chan []byte
-	report       chan []byte
-	state        chan State
-	sensor       chan Sensor
-	irdata       chan IRData
-	irenable     bool
-	outputcode   byte
-	sub          chan sub
-	closing      chan struct{}
-	done         chan struct{}
-	color        color.Color
-	count        byte
-	leftEnable   bool
-	rightEnable  bool
-	leftStick    CalibInfo
-	rightStick   CalibInfo
-	stats        Stats
-	sendRumble   chan<- []byte
-	muSendRumble sync.RWMutex
-	interval     *time.Ticker
-	gyrocalib    GyroCalibInfo
+	info             *hid.DeviceInfo
+	closeOnce        sync.Once
+	device           hid.Device
+	rumble           chan []byte
+	report           chan []byte
+	state            chan State
+	sensor           chan Sensor
+	irdata           chan IRData
+	irenable         bool
+	outputcode       byte
+	sub              chan sub
+	closing          chan struct{}
+	done             chan struct{}
+	color            color.Color
+	count            byte
+	leftEnable       bool
+	rightEnable      bool
+	leftStick        CalibInfo
+	rightStick       CalibInfo
+	stats            Stats
+	sendRumble       chan<- []byte
+	muSendRumble     sync.RWMutex
+	interval         *time.Ticker
+	gyrocalib        GyroCalibInfo
+	gyroCalibDefault GyroCalibInfo
 }
 
 // NewJoycon ...
@@ -281,7 +282,7 @@ func (jc *Joycon) receive() {
 				}
 				atomic.AddUint64(&jc.stats.SensorCount, 1)
 				for n := 0; n < 3; n++ {
-					s[n].Gyro = jc.calibrationGyro(s[n].Gyro)
+					s[n].GyroAdj = jc.CalibrationGyro(s[n].Gyro, jc.gyrocalib)
 					select {
 					case jc.sensor <- s[n]:
 					default:
@@ -409,6 +410,7 @@ func (jc *Joycon) run() {
 		return
 	}
 	jc.gyrocalib.UnmarshalBinary(data)
+	jc.gyroCalibDefault.UnmarshalBinary(data)
 	for _, seq := range connectSeq {
 		if err := jc.subcommand(nil, seq); err != nil {
 			jc.state <- State{Err: err}
@@ -551,17 +553,28 @@ func (jc *Joycon) calibration(c CalibInfo, s Stick) Vec2 {
 	return res
 }
 
-func (jc *Joycon) calibrationGyro(s Vec3) Vec3 {
+func (jc *Joycon) CalibrationGyro(s Vec3, gyrocalib GyroCalibInfo) Vec3 {
 	var res Vec3
-	coeffX := float32(936.0 / float32(jc.gyrocalib.Coeff.X-jc.gyrocalib.Center.X))
-	res.X = (s.X - float32(jc.gyrocalib.Center.X)) * coeffX
+	coeffX := float32(936.0 / float32(gyrocalib.Coeff.X-gyrocalib.Center.X))
+	res.X = (s.X - float32(gyrocalib.Center.X)) * coeffX
 
-	coeffY := float32(936.0 / float32(jc.gyrocalib.Coeff.Y-jc.gyrocalib.Center.Y))
-	res.Y = (s.Y - float32(jc.gyrocalib.Center.Y)) * coeffY
+	coeffY := float32(936.0 / float32(gyrocalib.Coeff.Y-gyrocalib.Center.Y))
+	res.Y = (s.Y - float32(gyrocalib.Center.Y)) * coeffY
 
-	coeffZ := float32(936.0 / float32(jc.gyrocalib.Coeff.Z-jc.gyrocalib.Center.Z))
-	res.Z = (s.Z - float32(jc.gyrocalib.Center.Z)) * coeffZ
+	coeffZ := float32(936.0 / float32(gyrocalib.Coeff.Z-gyrocalib.Center.Z))
+	res.Z = (s.Z - float32(gyrocalib.Center.Z)) * coeffZ
 
-	fmt.Println(res, s)
+	// fmt.Println(res, s, gyrocalib.Center)
 	return res
+}
+
+func (jc *Joycon) CalibrateGyro(s Vec3) bool {
+	gyro := jc.CalibrationGyro(s, jc.gyroCalibDefault)
+	if math.Abs(float64(gyro.X)) < 2.0 && math.Abs(float64(gyro.Y)) < 2.0 && math.Abs(float64(gyro.Z)) < 2.0 {
+		jc.gyrocalib.Center.X = s.X
+		jc.gyrocalib.Center.Y = s.Y
+		jc.gyrocalib.Center.Z = s.Z
+		return true
+	}
+	return false
 }
